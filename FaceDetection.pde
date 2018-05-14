@@ -93,7 +93,7 @@ class FaceDetection {
     //}
   }
   
-  public void eyeDetect(Capture came) {
+  public void eyeDetect(Capture came, int minSize) {
     faceSelected = -1;
     focusImg = null;//esvazia a imagem primeiro
     
@@ -105,18 +105,18 @@ class FaceDetection {
     //Se encontrar faces
     if (eyes != null && eyes.length > 0) {
       
-      for (int i = 0; i < eyes.length; i++) {
-        strokeWeight(2);
-        stroke(255,0,0);
-        noFill();
-        rect(eyes[i].x, eyes[i].y, eyes[i].width, eyes[i].height);
-      }
+      //for (int i = 0; i < eyes.length; i++) {
+      //  strokeWeight(2);
+      //  stroke(255,0,0);
+      //  noFill();
+      //  rect(eyes[i].x, eyes[i].y, eyes[i].width, eyes[i].height);
+      //}
       
       eyeSize = 0;
       //escolhe a maior face detectada (a mais próxima)
       for(int i = 0;i<eyes.length;i++) {
         
-        if(eyes[i].width > eyeSize) {
+        if(eyes[i].width > minSize && eyes[i].width > eyeSize) {
           eyeSelected = i;
           eyeSize = eyes[i].width;
         }
