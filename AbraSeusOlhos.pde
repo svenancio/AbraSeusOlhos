@@ -26,9 +26,16 @@ void setup() {
   
   video2 = new Movie(this, "cortecaoandaluz.mp4");
   
-  video3 = new Movie(this, "navalha-RGB.mp4");
-  // video3.loop();
+  //video3 = new Movie(this, "soOlho-RGB.mp4");
   
+  /*
+  PROBLEMA DO VÍDEO COM OLHO DIFUSO: o threshold que converte os pixels em
+  transparentes não tem uma regulagem ideal, pois se a gente aumenta, ele 
+  começa a deixar transparente outros pedaços do vídeo, e o efeito fica
+  esquisito. Acho que o melhor será usar o olho com recorte rente, mas um
+  pouco mais aberto.
+  */
+  video3 = new Movie(this, "olho-difus-rgb.mp4");
   
   //ativação da câmera
   String[] cameras = Capture.list();
@@ -45,34 +52,35 @@ void setup() {
   
   bc = new BrightnessContrastController();
   
-  mask = loadImage("eyemask.png");
+  //mask = loadImage("eyemask.png");
 }
 
 void draw() {
  
   if (mode == 0) {
     image(video1, 0, 0);
-    //image(video3, 0, 0);
     
-    if(frameCount % 12 == 0) {//a cada meio segundo
-      fd.eyeDetect(cam, 100);//tenta detectar a imagem de um olho
+    if(frameCount % 48 == 0) {//a cada meio segundo
+      fd.eyeDetect(cam, 90);//tenta detectar a imagem de um olho
       
       //se detectar um olho
       if(fd.focusImg != null) {
         img = fd.focusImg.get();//armazena a imagem
         img = bc.nondestructiveShift(img, brightness, contrast);//acerta o brilho e contraste
-        img.filter(GRAY);
-        mask.resize(img.width,img.height);
+        //img.filter(GRAY);//ative para deixar preto e branco
+        img.resize(height/4,height/4);
+        //mask.resize(img.width,img.height);
         
         //muda a cena pro modo de corte
         mode = 1;
         video2.play();
+        video3.play();
         
         v3playing = false;
         eyeLayerCount = 0;
       }
     }
-    
+  
   } else {
     //no modo de corte...
     if(video2.time() < video2.duration()) { //enquanto não terminar a cena do corte
@@ -82,28 +90,15 @@ void draw() {
       eyeLayerCount++;
       if(eyeLayerCount < 87) {
         
-        img.mask(mask);
-        image(img,width/2-20,height/4+10);
+        //img.mask(mask);
+        image(img,width/2,height/4+45);
+        //tint(255, 10);//ative o tint caso queira ver melhor onde o olho capturado é posicionado
+        image(doAlpha(video3),0,0);
+        //noTint();
       }
       if(eyeLayerCount == 130) {
         img.resize(height,height);
-        mask.resize(img.width,img.height);
-      }
-      if(eyeLayerCount > 130) {
-        img.mask(mask);
-        image(img,250,-100);
-      }
-      
-      //TODO exibir a sobreposição da camada da lâmina
-      if(video2.time() > 5.17) {
-        if(!v3playing) {
-          video3.play();
-          v3playing = true;
-        }
-        
-        if(v3playing) {
-          image(doAlpha(video3),0,0);
-        }
+        //mask.resize(img.width,img.height);
       }
     } else {
       //volta pra cena da afiação
@@ -112,8 +107,6 @@ void draw() {
       video1.jump(0);
       mode = 0;
     }
-    
-    
   }
   
 }
@@ -135,7 +128,7 @@ void mouseClicked() {
 }
 
 PImage doAlpha(PImage vImg) {  
-  float threshold = 3;
+  float threshold = 35;//ajuste o threshold para pegar mais ou menos transparência
   PImage result = createImage(vImg.width, vImg.height, ARGB);
   
   // We are going to look at both image's pixels
