@@ -129,7 +129,7 @@ class FaceDetection {
         
         //cria a imagem foco
         focusImg = came.get(eyes[eyeSelected].x - size/2, eyes[eyeSelected].y - size/2, size*2, size*2);
-        focusImg.resize(height/3,height/3);
+        focusImg.resize(height,height);
       }
     }
   }

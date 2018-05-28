@@ -9,7 +9,7 @@ float contrast = 2;
 Capture cam;
 FaceDetection fd;
 BrightnessContrastController bc;
-PImage img, mask;
+PImage img, masked;
 Movie video1, video2, video3;
 int mode = 0;//0 - afiação da navalha, 1 - corte do olho
 int eyeLayerCount = 0;//contagem de permanência do olho capturado
@@ -21,28 +21,19 @@ void setup() {
   frameRate(23.98);//sincronizando com o framerate dos vídeos
   
   //posicionamento dos vídeos
-  video1 = new Movie(this, "afiandolamina.mp4");
+  video1 = new Movie(this, "somenteLamina.mp4");
   video1.loop();
   
   video2 = new Movie(this, "cortecaoandaluz.mp4");
   
-  //video3 = new Movie(this, "soOlho-RGB.mp4");
-  
-  /*
-  PROBLEMA DO VÍDEO COM OLHO DIFUSO: o threshold que converte os pixels em
-  transparentes não tem uma regulagem ideal, pois se a gente aumenta, ele 
-  começa a deixar transparente outros pedaços do vídeo, e o efeito fica
-  esquisito. Acho que o melhor será usar o olho com recorte rente, mas um
-  pouco mais aberto.
-  */
-  video3 = new Movie(this, "olho-difus-rgb.mp4");
+  video3 = new Movie(this, "olho-difus-alpha.mp4");
   
   //ativação da câmera
   String[] cameras = Capture.list();
   for (int i = 0; i < cameras.length; i++) {
     println(i + " " + cameras[i]);
   }
-  cam = new Capture(this, 640, 480, cameras[1], 30);
+  cam = new Capture(this, 640, 480, cameras[5], 30);
   //cam = new Capture(this, 640, 480, cameras[0], 30);
   cam.start();
   
@@ -56,11 +47,11 @@ void setup() {
 }
 
 void draw() {
- 
+  //MODE 0 - exibe loop do vídeo afiando a lâmina e detecta olhos de tempos em tempos
   if (mode == 0) {
     image(video1, 0, 0);
     
-    if(frameCount % 48 == 0) {//a cada meio segundo
+    if(frameCount % 48 == 0) {//a cada dois segundos
       fd.eyeDetect(cam, 90);//tenta detectar a imagem de um olho
       
       //se detectar um olho
@@ -69,7 +60,6 @@ void draw() {
         img = bc.nondestructiveShift(img, brightness, contrast);//acerta o brilho e contraste
         //img.filter(GRAY);//ative para deixar preto e branco
         img.resize(height/4,height/4);
-        //mask.resize(img.width,img.height);
         
         //muda a cena pro modo de corte
         mode = 1;
@@ -82,29 +72,30 @@ void draw() {
     }
   
   } else {
-    //no modo de corte...
+    //MODE 1 - no modo de corte...
     if(video2.time() < video2.duration()) { //enquanto não terminar a cena do corte
-      image(video2, 0, 0);//exibe a cena do corte
+      
       
       //exibe a sobreposição do olho capturado durante o trecho do rosto
       eyeLayerCount++;
-      if(eyeLayerCount < 87) {
+      if(eyeLayerCount < 60) {println(eyeLayerCount);
+        img.resize(height/3,height/3);
+        image(img,width/2 - 25, height/4 + 25);
+        masked = get();//obtem a cena já com o olho capturado posicionado
+        masked = doAlpha(video3, masked);//aplica a máscara a partir do vídeo 3
         
-        //img.mask(mask);
-        image(img,width/2,height/4+45);
-        //tint(255, 10);//ative o tint caso queira ver melhor onde o olho capturado é posicionado
-        image(doAlpha(video3),0,0);
-        //noTint();
+        image(video2, 0, 0);//exibe a cena do corte
+        image(masked, 0, 0);//exibe o olho capturado
       }
-      if(eyeLayerCount == 130) {
-        img.resize(height,height);
-        //mask.resize(img.width,img.height);
+      else
+      {
+        image(video2, 0, 0);//exibe a cena do corte
       }
     } else {
       //volta pra cena da afiação
       video2.stop();
       video3.stop();
-      video1.jump(0);
+      video1.jump(0);//reinicia o vídeo do corte
       mode = 0;
     }
   }
@@ -124,26 +115,33 @@ void captureEvent(Capture cam) {
 }
 
 void mouseClicked() {
-  println(video3.get(mouseX,mouseY));
+  saveFrame("line-######.png");
 }
 
-PImage doAlpha(PImage vImg) {  
-  float threshold = 35;//ajuste o threshold para pegar mais ou menos transparência
-  PImage result = createImage(vImg.width, vImg.height, ARGB);
+PImage doAlpha(PImage mImg, PImage vImg) {  
+  PImage result = createImage(mImg.width, mImg.height, ARGB);
+  color c, d;
+  int a, r, g, b;
   
   // We are going to look at both image's pixels
+  mImg.loadPixels();
   vImg.loadPixels();
   result.loadPixels();
   
-  for (int x = 0; x < vImg.width; x++) {
-    for (int y = 0; y < vImg.height; y++ ) {
-      int loc = x + y*vImg.width;
+  for (int x = 0; x < mImg.width; x++) {
+    for (int y = 0; y < mImg.height; y++ ) {
+      int loc = x + y*mImg.width;
       
-      if (brightness(vImg.pixels[loc]) < threshold) {
-        result.pixels[loc]  = color(255, 0);
-      } else {
-        result.pixels[loc]  = vImg.pixels[loc];
-      }
+      c = mImg.pixels[loc];
+      d = vImg.pixels[loc];
+      
+      a = (c >> 16) & 0xFF;//pega o canal r como definição de transparência
+      a = 255 - a;
+      r = (d >> 16) & 0xFF;
+      g = (d >> 8) & 0xFF;
+      b = d & 0xFF;
+      
+      result.pixels[loc] = color(r, g, b, a);
     }
   }
 
