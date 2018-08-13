@@ -1,9 +1,14 @@
 import processing.video.*;
+import java.awt.Rectangle;
 
-//calibração
+//calibração de brilho e contraste. Use para adaptar a imagem capturada com a cena do vídeo
 int brightness = 100;
 float contrast = 2;
-//TODO vetor de posições para variar a posição do olho
+
+int minEyeSize = 90; //largura mínima para que um olho possa ser considerado válido dentro de uma detecção
+boolean videoMode = true;//coloque false se quiser que capture apenas uma foto do olho, true se quiser que capture vídeo
+
+
 
 //VARS
 Capture cam;
@@ -13,7 +18,8 @@ PImage img, masked;
 Movie video1, video2, video3;
 int mode = 0;//0 - afiação da navalha, 1 - corte do olho
 int eyeLayerCount = 0;//contagem de permanência do olho capturado
-boolean v3playing;
+boolean v3playing;//flag para indicar se o corte está em andamento
+Rectangle det;//informações do recorte do olho detectado
 
 //CODE
 void setup() {
@@ -26,24 +32,23 @@ void setup() {
   
   video2 = new Movie(this, "cortecaoandaluz.mp4");
   
-  video3 = new Movie(this, "olho-difus-alpha.mp4");
+  video3 = new Movie(this, "olho-difus-alpha_old.mp4");
   
-  //ativação da câmera
+  //listagem de câmeras conectadas ao computador
   String[] cameras = Capture.list();
   for (int i = 0; i < cameras.length; i++) {
     println(i + " " + cameras[i]);
   }
-  cam = new Capture(this, 640, 480, cameras[5], 30);
-  //cam = new Capture(this, 640, 480, cameras[0], 30);
-  cam.start();
   
+  //modifique o indice do vetor de cameras conforme a listagem obtida no console
+  cam = new Capture(this, 640, 480, cameras[5], 30);//procure usar sempre a resolução 640x480 para exigir menos do computador
+  cam.start();
   
   //ativação do reconhecimento do olho via OpenCV
   fd = new FaceDetection(this, cam);
   
+  //ativação do filtro de brilho e contraste
   bc = new BrightnessContrastController();
-  
-  //mask = loadImage("eyemask.png");
 }
 
 void draw() {
@@ -52,44 +57,77 @@ void draw() {
     image(video1, 0, 0);
     
     if(frameCount % 48 == 0) {//a cada dois segundos
-      fd.eyeDetect(cam, 90);//tenta detectar a imagem de um olho
-      
-      //se detectar um olho
-      if(fd.focusImg != null) {
-        img = fd.focusImg.get();//armazena a imagem
-        img = bc.nondestructiveShift(img, brightness, contrast);//acerta o brilho e contraste
-        //img.filter(GRAY);//ative para deixar preto e branco
-        img.resize(height/4,height/4);
+      if(!videoMode) {
+        //MODO FOTO
+        fd.eyeDetect(cam, minEyeSize);//tenta detectar a imagem de um olho
         
-        //muda a cena pro modo de corte
-        mode = 1;
-        video2.play();
-        video3.play();
-        
-        v3playing = false;
-        eyeLayerCount = 0;
+        //se detectar um olho
+        if(fd.focusImg != null) {
+          img = fd.focusImg.get();//armazena a imagem
+  
+          img = bc.nondestructiveShift(img, brightness, contrast);//acerta o brilho e contraste
+            
+          //img.filter(GRAY);//ative para deixar preto e branco
+          img.resize(height/4,height/4);
+          
+          //muda a cena pro modo de corte
+          mode = 1;
+          video2.play();
+          video3.play();
+          
+          v3playing = false;
+          eyeLayerCount = 0;
+        }
+      } else {
+        //MODO VIDEO
+        det = fd.eyeDetectRect(cam, minEyeSize);
+        if(det != null) {
+          //muda a cena pro modo de corte
+          mode = 1;
+          video2.play();
+          video3.play();
+          
+          v3playing = false;
+          eyeLayerCount = 0;
+        }
       }
     }
-  
   } else {
     //MODE 1 - no modo de corte...
     if(video2.time() < video2.duration()) { //enquanto não terminar a cena do corte
-      
-      
-      //exibe a sobreposição do olho capturado durante o trecho do rosto
-      eyeLayerCount++;
-      if(eyeLayerCount < 60) {println(eyeLayerCount);
-        img.resize(height/3,height/3);
-        image(img,width/2 - 25, height/4 + 25);
-        masked = get();//obtem a cena já com o olho capturado posicionado
-        masked = doAlpha(video3, masked);//aplica a máscara a partir do vídeo 3
-        
-        image(video2, 0, 0);//exibe a cena do corte
-        image(masked, 0, 0);//exibe o olho capturado
-      }
-      else
-      {
-        image(video2, 0, 0);//exibe a cena do corte
+      if(!videoMode) {
+        //MODO FOTO
+        //exibe a sobreposição do olho capturado durante o trecho do rosto
+        eyeLayerCount++;
+        if(eyeLayerCount < video3.duration()*frameRate) {
+          img.resize(height/3,height/3);//redimensionamento da imagem capturada
+          image(img,width/2 - 25, height/4 + 25);//posicionamento do olho no vídeo
+          masked = get();//obtem a cena já com o olho capturado posicionado
+          masked = doAlpha(video3, masked);//aplica a máscara a partir do vídeo 3
+          
+          image(video2, 0, 0);//exibe a cena do corte
+          image(masked, 0, 0);//exibe o olho capturado
+        }
+        else
+        {
+          image(video2, 0, 0);//exibe a cena do corte
+        }
+      } else {
+        //MODO VIDEO
+        eyeLayerCount++;
+        if(eyeLayerCount < video3.duration()*frameRate) {
+          img = cam.get(det.x,det.y,det.width,det.height);
+          img = bc.nondestructiveShift(img, brightness, contrast);//acerta o brilho e contraste
+          img.resize(height/3,height/3);//redimensionamento da imagem capturada
+          image(img,width/2 - 25, height/4 + 25);//posicionamento do olho no vídeo
+          masked = get();//obtem a cena já com o olho capturado posicionado
+          masked = doAlpha(video3, masked);//aplica a máscara a partir do vídeo 3
+          
+          image(video2, 0, 0);//exibe a cena do corte
+          image(masked, 0, 0);//exibe o olho capturado
+        } else {
+          image(video2, 0, 0);//exibe a cena do corte
+        }
       }
     } else {
       //volta pra cena da afiação
@@ -115,28 +153,35 @@ void captureEvent(Capture cam) {
 }
 
 void mouseClicked() {
-  saveFrame("line-######.png");
+  //serve para salvar screenshots do trabalho
+  //saveFrame("line-######.png");
 }
+
+
 
 PImage doAlpha(PImage mImg, PImage vImg) {  
   PImage result = createImage(mImg.width, mImg.height, ARGB);
   color c, d;
   int a, r, g, b;
   
-  // We are going to look at both image's pixels
+  //só aplica máscara se as dimensões forem iguais
+  if(mImg.height != vImg.height || mImg.width != vImg.width) return null; 
+  
+  //Carrega os pixels da imagem e da máscara
   mImg.loadPixels();
   vImg.loadPixels();
   result.loadPixels();
   
+  //loop duplo para passar por cada pixel
   for (int x = 0; x < mImg.width; x++) {
     for (int y = 0; y < mImg.height; y++ ) {
       int loc = x + y*mImg.width;
       
-      c = mImg.pixels[loc];
-      d = vImg.pixels[loc];
+      c = mImg.pixels[loc];//cor do pixel da máscara
+      d = vImg.pixels[loc];//cor do pixel da imagem
       
       a = (c >> 16) & 0xFF;//pega o canal r como definição de transparência
-      a = 255 - a;
+      a = 255 - a;//no caso da máscara ser branca, é necessário inverter o valor para que se tenha a transparência 
       r = (d >> 16) & 0xFF;
       g = (d >> 8) & 0xFF;
       b = d & 0xFF;
@@ -145,9 +190,7 @@ PImage doAlpha(PImage mImg, PImage vImg) {
     }
   }
 
-  // We changed the pixels in destination
+  //faz o update para fixar as mudanças de pixel
   result.updatePixels();
-  // Display the destination
-  //image(destination,0,0);
   return(result);
 }

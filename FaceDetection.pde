@@ -94,7 +94,7 @@ class FaceDetection {
   }
   
   public void eyeDetect(Capture came, int minSize) {
-    faceSelected = -1;
+    eyeSelected = -1;
     focusImg = null;//esvazia a imagem primeiro
     
     //ETAPA 1 - detecção pela face
@@ -130,6 +130,76 @@ class FaceDetection {
         //cria a imagem foco
         focusImg = came.get(eyes[eyeSelected].x - size/2, eyes[eyeSelected].y - size/2, size*2, size*2);
         focusImg.resize(height,height);
+      }
+    }
+  }
+  
+  public Rectangle eyeDetectRect(Capture came, int minSize) {
+    eyeSelected = -1;
+    focusImg = null;//esvazia a imagem primeiro
+    
+    //ETAPA 1 - detecção pela face
+    opencv.loadCascade(OpenCV.CASCADE_EYE);
+    opencv.loadImage(came);
+    eyes = opencv.detect();
+    
+    //Se encontrar olhos
+    if (eyes != null && eyes.length > 0) {
+      
+      //for (int i = 0; i < eyes.length; i++) {
+      //  strokeWeight(2);
+      //  stroke(255,0,0);
+      //  noFill();
+      //  rect(eyes[i].x, eyes[i].y, eyes[i].width, eyes[i].height);
+      //}
+      
+      eyeSize = 0;
+      //escolhe a maior face detectada (a mais próxima)
+      for(int i = 0;i<eyes.length;i++) {
+        
+        if(eyes[i].width > minSize && eyes[i].width > eyeSize) {
+          eyeSelected = i;
+          eyeSize = eyes[i].width;
+        }
+      }
+      
+      //faceSelected = (int)random(0,faces.length);
+      if(eyeSelected >= 0) {
+        size = eyes[eyeSelected].width;
+        return(new Rectangle(eyes[eyeSelected].x - size/2, eyes[eyeSelected].y - size/2, size*2, size*2));
+      }
+    }
+    return null;
+  }
+  
+  public void eyeDetectSecondPass(PImage img, int minSize) {
+    eyeSelected = -1;
+    focusImg = null;//esvazia a imagem primeiro
+    
+    //ETAPA 1 - detecção pela face
+    opencv.loadCascade(OpenCV.CASCADE_EYE);
+    opencv.loadImage(img);
+    eyes = opencv.detect();
+    
+    //Se encontrar olhos
+    if (eyes != null && eyes.length > 0) {
+      
+      eyeSize = 0;
+      //escolhe a maior face detectada (a mais próxima)
+      for(int i = 0;i<eyes.length;i++) {
+        
+        if(eyes[i].width > minSize && eyes[i].width > eyeSize) { //<>//
+          eyeSelected = i;
+          eyeSize = eyes[i].width;
+        }
+      }
+      
+      if(eyeSelected >= 0) {
+        eyeSelected = constrain(eyeSelected,0,eyes.length-1);
+        size = eyes[eyeSelected].width;
+        
+        //cria a imagem foco
+        focusImg = img.get();
       }
     }
   }
