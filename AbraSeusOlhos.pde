@@ -1,3 +1,6 @@
+//VERSÃO 1.3
+
+
 import processing.video.*;
 import java.awt.Rectangle;
 
@@ -5,8 +8,9 @@ import java.awt.Rectangle;
 int brightness = 100;
 float contrast = 2;
 
+int eyeLayerCountMax = 43;//quantidade de frames que dura a máscara (mesma duração da cena do corte do olho da moça)
 int minEyeSize = 90; //largura mínima para que um olho possa ser considerado válido dentro de uma detecção
-boolean videoMode = true;//coloque false se quiser que capture apenas uma foto do olho, true se quiser que capture vídeo
+boolean videoMode = false;//coloque false se quiser que capture apenas uma foto do olho, true se quiser que capture vídeo
 
 
 
@@ -18,7 +22,6 @@ PImage img, masked;
 Movie video1, video2, video3;
 int mode = 0;//0 - afiação da navalha, 1 - corte do olho
 int eyeLayerCount = 0;//contagem de permanência do olho capturado
-boolean v3playing;//flag para indicar se o corte está em andamento
 Rectangle det;//informações do recorte do olho detectado
 
 //CODE
@@ -27,7 +30,7 @@ void setup() {
   frameRate(23.98);//sincronizando com o framerate dos vídeos
   
   //posicionamento dos vídeos
-  video1 = new Movie(this, "somenteLamina.mp4");
+  video1 = new Movie(this, "solaminalooplongo.mp4");
   video1.loop();
   
   video2 = new Movie(this, "cortecaoandaluz.mp4");
@@ -59,7 +62,6 @@ void draw() {
     if(frameCount % 48 == 0) {//a cada dois segundos
       if(!videoMode) {
         //MODO FOTO
-        fd.eyeDetect(cam, minEyeSize);//tenta detectar a imagem de um olho
         
         //se detectar um olho
         if(fd.focusImg != null) {
@@ -75,20 +77,24 @@ void draw() {
           video2.play();
           video3.play();
           
-          v3playing = false;
           eyeLayerCount = 0;
+        } else {
+          //dispara a detecção paralelamente para não interferir na exibição do vídeo
+          thread("detectEyeForPhoto");
         }
       } else {
         //MODO VIDEO
-        det = fd.eyeDetectRect(cam, minEyeSize);
+        
         if(det != null) {
           //muda a cena pro modo de corte
           mode = 1;
           video2.play();
           video3.play();
           
-          v3playing = false;
           eyeLayerCount = 0;
+        } else {
+          //dispara a detecção paralelamente para não interferir na exibição do vídeo
+          thread("detectEyeForVideo");
         }
       }
     }
@@ -97,9 +103,10 @@ void draw() {
     if(video2.time() < video2.duration()) { //enquanto não terminar a cena do corte
       if(!videoMode) {
         //MODO FOTO
+        
         //exibe a sobreposição do olho capturado durante o trecho do rosto
         eyeLayerCount++;
-        if(eyeLayerCount < video3.duration()*frameRate) {
+        if(eyeLayerCount < eyeLayerCountMax) {
           img.resize(height/3,height/3);//redimensionamento da imagem capturada
           image(img,width/2 - 25, height/4 + 25);//posicionamento do olho no vídeo
           masked = get();//obtem a cena já com o olho capturado posicionado
@@ -115,9 +122,10 @@ void draw() {
       } else {
         //MODO VIDEO
         eyeLayerCount++;
-        if(eyeLayerCount < video3.duration()*frameRate) {
+        if(eyeLayerCount < eyeLayerCountMax) {
           img = cam.get(det.x,det.y,det.width,det.height);
           img = bc.nondestructiveShift(img, brightness, contrast);//acerta o brilho e contraste
+          //img.filter(GRAY);//ative para deixar preto e branco
           img.resize(height/3,height/3);//redimensionamento da imagem capturada
           image(img,width/2 - 25, height/4 + 25);//posicionamento do olho no vídeo
           masked = get();//obtem a cena já com o olho capturado posicionado
@@ -135,12 +143,23 @@ void draw() {
       video3.stop();
       video1.jump(0);//reinicia o vídeo do corte
       mode = 0;
+      det = null;
+      fd.clearDetection();
     }
   }
-  
+  if(fd.debugImg != null) {
+    image(fd.debugImg,0,0);
+  }
 }
 
+void detectEyeForPhoto() {
+  //fd.eyeDetect(cam, minEyeSize);
+  fd.eyeDoubleDetect(cam, minEyeSize);//tenta detectar a imagem de um olho
+}
 
+void detectEyeForVideo() {
+  det = fd.eyeDetectRect(cam, minEyeSize);
+}
 
 //atualiza a leitura dos vídeos
 void movieEvent(Movie m) {

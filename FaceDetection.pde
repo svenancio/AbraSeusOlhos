@@ -3,16 +3,17 @@ import java.awt.Rectangle;
 
 
 class FaceDetection {
-  private OpenCV opencv;
+  private OpenCV opencv, opencv2;
   private Rectangle[] faces,eyes,noses;
   private int size, faceSelected, faceSize, eyeSelected, eyeSize;
 
-  public PImage focusImg;
+  public PImage focusImg, debugImg;
   public PVector rEyeCenter, lEyeCenter, nose;
   
   public FaceDetection(PApplet context, Capture came) {
     //instancia o objeto CV
     opencv = new OpenCV(context, came.width, came.height);
+    opencv2 = new OpenCV(context, 720, 720);
   }
   
   //a detecção de uma face exige 3 etapas: detectar que há uma face, que há 2 olhos e um nariz. Do contrário, nada será detectado
@@ -172,35 +173,63 @@ class FaceDetection {
     return null;
   }
   
-  public void eyeDetectSecondPass(PImage img, int minSize) {
+  public void eyeDoubleDetect(Capture came, int minSize) {
     eyeSelected = -1;
     focusImg = null;//esvazia a imagem primeiro
     
-    //ETAPA 1 - detecção pela face
+    //primeira detecção
     opencv.loadCascade(OpenCV.CASCADE_EYE);
-    opencv.loadImage(img);
+    opencv.loadImage(came);
     eyes = opencv.detect();
     
-    //Se encontrar olhos
+    //Se encontrar faces
     if (eyes != null && eyes.length > 0) {
+       //<>//
+      //for (int i = 0; i < eyes.length; i++) {
+      //  strokeWeight(2);
+      //  stroke(255,0,0);
+      //  noFill();
+      //  rect(eyes[i].x, eyes[i].y, eyes[i].width, eyes[i].height);
+      //}
       
       eyeSize = 0;
       //escolhe a maior face detectada (a mais próxima)
       for(int i = 0;i<eyes.length;i++) {
         
-        if(eyes[i].width > minSize && eyes[i].width > eyeSize) { //<>//
+        if(eyes[i].width > minSize && eyes[i].width > eyeSize) {
           eyeSelected = i;
           eyeSize = eyes[i].width;
         }
       }
       
+      //faceSelected = (int)random(0,faces.length);
       if(eyeSelected >= 0) {
         eyeSelected = constrain(eyeSelected,0,eyes.length-1);
         size = eyes[eyeSelected].width;
         
         //cria a imagem foco
-        focusImg = img.get();
+        focusImg = came.get(eyes[eyeSelected].x - size/2, eyes[eyeSelected].y - size/2, size*2, size*2);
+        focusImg.resize(height,height);
+        debugImg = focusImg.get();
+        
+        //segunda detecção
+        opencv2.loadCascade(OpenCV.CASCADE_EYE);
+        opencv2.loadImage(focusImg.get());
+        eyes = opencv2.detect();
+        if (eyes != null && eyes.length > 0) {
+          for (int i = 0; i < eyes.length; i++) {
+            strokeWeight(2);
+            stroke(255,0,0);
+            noFill();
+            rect(eyes[i].x, eyes[i].y, eyes[i].width, eyes[i].height);
+          }
+        }
       }
     }
+  }
+  
+  //TODO em andamento
+  void clearDetection() {
+    focusImg = null;
   }
 }
