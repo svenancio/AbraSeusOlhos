@@ -147,9 +147,6 @@ void draw() {
       fd.clearDetection();
     }
   }
-  if(fd.debugImg != null) {
-    image(fd.debugImg,0,0);
-  }
 }
 
 void detectEyeForPhoto() {
