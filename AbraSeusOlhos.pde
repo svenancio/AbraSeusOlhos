@@ -1,4 +1,4 @@
-//VERSÃO 1.3
+//VERSÃO 1.4
 
 
 import processing.video.*;
@@ -8,10 +8,10 @@ import java.awt.Rectangle;
 int brightness = 100;
 float contrast = 2;
 
-int eyeLayerCountMax = 43;//quantidade de frames que dura a máscara (mesma duração da cena do corte do olho da moça)
-int minEyeSize = 90; //largura mínima para que um olho possa ser considerado válido dentro de uma detecção
-boolean videoMode = false;//coloque false se quiser que capture apenas uma foto do olho, true se quiser que capture vídeo
-
+int eyeLayerCountMax = 140;//quantidade de frames que dura a máscara (mesma duração da cena do corte do olho da moça)
+int minEyeSize = 120; //largura mínima para que um olho possa ser considerado válido dentro de uma detecção
+boolean videoMode = true;//coloque false se quiser que capture apenas uma foto do olho, true se quiser que capture vídeo
+boolean cameraDebugMode = false;//mostra a imagem fonte da câmera
 
 
 //VARS
@@ -33,9 +33,9 @@ void setup() {
   video1 = new Movie(this, "solaminalooplongo.mp4");
   video1.loop();
   
-  video2 = new Movie(this, "cortecaoandaluz.mp4");
+  video2 = new Movie(this, "cortecaoandaluz1.mp4");
   
-  video3 = new Movie(this, "olho-difus-alpha_old.mp4");
+  video3 = new Movie(this, "olho-difus-alpha1.mp4");
   
   //listagem de câmeras conectadas ao computador
   String[] cameras = Capture.list();
@@ -55,6 +55,12 @@ void setup() {
 }
 
 void draw() {
+  if(cameraDebugMode) {
+    image(cam.get(182,164,329,233),0,0);
+    if(frameCount % 48 == 0) {
+      fd.eyeDetect(cam, minEyeSize,182,164,329,233);
+    }
+  } else {
   //MODE 0 - exibe loop do vídeo afiando a lâmina e detecta olhos de tempos em tempos
   if (mode == 0) {
     image(video1, 0, 0);
@@ -100,12 +106,14 @@ void draw() {
     }
   } else {
     //MODE 1 - no modo de corte...
-    if(video2.time() < video2.duration()) { //enquanto não terminar a cena do corte
+    eyeLayerCount++;
+    if(eyeLayerCount < video2.duration()*frameRate) { //enquanto não terminar a cena do corte
+      
       if(!videoMode) {
         //MODO FOTO
         
         //exibe a sobreposição do olho capturado durante o trecho do rosto
-        eyeLayerCount++;
+        
         if(eyeLayerCount < eyeLayerCountMax) {
           img.resize(height/3,height/3);//redimensionamento da imagem capturada
           image(img,width/2 - 25, height/4 + 25);//posicionamento do olho no vídeo
@@ -121,7 +129,7 @@ void draw() {
         }
       } else {
         //MODO VIDEO
-        eyeLayerCount++;
+        
         if(eyeLayerCount < eyeLayerCountMax) {
           img = cam.get(det.x,det.y,det.width,det.height);
           img = bc.nondestructiveShift(img, brightness, contrast);//acerta o brilho e contraste
@@ -147,15 +155,16 @@ void draw() {
       fd.clearDetection();
     }
   }
+  }
 }
 
 void detectEyeForPhoto() {
-  //fd.eyeDetect(cam, minEyeSize);
-  fd.eyeDoubleDetect(cam, minEyeSize);//tenta detectar a imagem de um olho
+  //fd.eyeDoubleDetect(cam, minEyeSize);
+  fd.eyeDetect(cam, minEyeSize,182,164,329,233);//tenta detectar a imagem de um olho
 }
 
 void detectEyeForVideo() {
-  det = fd.eyeDetectRect(cam, minEyeSize);
+  det = fd.eyeDetectRect(cam, minEyeSize,182,164,329,233);
 }
 
 //atualiza a leitura dos vídeos

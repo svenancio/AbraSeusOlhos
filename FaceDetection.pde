@@ -12,7 +12,7 @@ class FaceDetection {
   
   public FaceDetection(PApplet context, Capture came) {
     //instancia o objeto CV
-    opencv = new OpenCV(context, came.width, came.height);
+    opencv = new OpenCV(context, 329, 233);
     opencv2 = new OpenCV(context, 720, 720);
   }
   
@@ -94,13 +94,13 @@ class FaceDetection {
     //}
   }
   
-  public void eyeDetect(Capture came, int minSize) {
+  public void eyeDetect(Capture came, int minSize, int cx, int cy, int cw, int ch) {
     eyeSelected = -1;
     focusImg = null;//esvazia a imagem primeiro
     
     //ETAPA 1 - detecção pela face
     opencv.loadCascade(OpenCV.CASCADE_EYE);
-    opencv.loadImage(came);
+    opencv.loadImage(came.get(cx,cy,cw,ch));
     eyes = opencv.detect();
     
     //Se encontrar faces
@@ -129,19 +129,22 @@ class FaceDetection {
         size = eyes[eyeSelected].width;
         
         //cria a imagem foco
-        focusImg = came.get(eyes[eyeSelected].x - size/2, eyes[eyeSelected].y - size/2, size*2, size*2);
+        focusImg = came.get(eyes[eyeSelected].x - size/2 + cx, eyes[eyeSelected].y - size/2 + cy, size*2, size*2);
         focusImg.resize(height,height);
+        if(cameraDebugMode) {
+          image(focusImg,330,0);
+        }
       }
     }
   }
   
-  public Rectangle eyeDetectRect(Capture came, int minSize) {
+  public Rectangle eyeDetectRect(Capture came, int minSize, int cx, int cy, int cw, int ch) {
     eyeSelected = -1;
     focusImg = null;//esvazia a imagem primeiro
     
     //ETAPA 1 - detecção pela face
     opencv.loadCascade(OpenCV.CASCADE_EYE);
-    opencv.loadImage(came);
+    opencv.loadImage(came.get(cx,cy,cw,ch));
     eyes = opencv.detect();
     
     //Se encontrar olhos
@@ -167,7 +170,7 @@ class FaceDetection {
       //faceSelected = (int)random(0,faces.length);
       if(eyeSelected >= 0) {
         size = eyes[eyeSelected].width;
-        return(new Rectangle(eyes[eyeSelected].x - size/2, eyes[eyeSelected].y - size/2, size*2, size*2));
+        return(new Rectangle(eyes[eyeSelected].x - size/2 + cx, eyes[eyeSelected].y - size/2 + cy, size*2, size*2));
       }
     }
     return null;
@@ -181,9 +184,9 @@ class FaceDetection {
     opencv.loadCascade(OpenCV.CASCADE_EYE);
     opencv.loadImage(came);
     eyes = opencv.detect();
-    
+     //<>//
     //Se encontrar faces
-    if (eyes != null && eyes.length > 0) {
+    if (eyes != null && eyes.length > 0) { //<>// //<>// //<>// //<>// //<>//
        //<>//
       //for (int i = 0; i < eyes.length; i++) {
       //  strokeWeight(2);
@@ -209,8 +212,7 @@ class FaceDetection {
         
         //cria a imagem foco
         focusImg = came.get(eyes[eyeSelected].x - size/2, eyes[eyeSelected].y - size/2, size*2, size*2);
-        focusImg.resize(height,height);
-        debugImg = focusImg.get();
+        //debugImg = focusImg.get();
         
         //segunda detecção
         opencv2.loadCascade(OpenCV.CASCADE_EYE);
@@ -218,10 +220,15 @@ class FaceDetection {
         eyes = opencv2.detect();
         if (eyes != null && eyes.length > 0) {
           for (int i = 0; i < eyes.length; i++) {
-            strokeWeight(2);
-            stroke(255,0,0);
-            noFill();
-            rect(eyes[i].x, eyes[i].y, eyes[i].width, eyes[i].height);
+            if(eyes[i].width > minSize) {
+              strokeWeight(2);
+              stroke(255,0,0);
+              noFill();
+              rect(eyes[i].x, eyes[i].y, eyes[i].width, eyes[i].height);
+              println("detectou "+eyes[i].x+" "+eyes[i].y+" "+eyes[i].width+" "+eyes[i].height);
+              focusImg.resize(height,height);
+              break;
+            }
           }
         }
       }
