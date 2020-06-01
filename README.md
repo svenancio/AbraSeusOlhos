@@ -1,6 +1,6 @@
-# AbraSeusOlhos
+# Contra a Cegueira da Ordem Estabelecida
 
-<p>Project made for the "Contra a Cegueira da Ordem Estabelecida" installation (by Realities Group - USP Brazil). It keeps a short scene from Buñuel's "An Andalusian Dog" in a loop, and it uses a webcamera for eye detection with OpenCV. When it detects an eye, it extracts the image of the eye and place it on another scene of Buñuel movie.</p>
+<p>Software made for the "Contra a Cegueira da Ordem Estabelecida" (Against the Blindness of Established Order) installation, by Grupo Realidades - Univeristy of São Paulo, Brazil. It keeps a short scene from Buñuel's "An Andalusian Dog" in a loop, while using a webcamera for eye detection with OpenCV. When an eye is detected on the video stream, it is cropped and placed on another scene of Buñuel's movie.</p>
 
 <p>History
 <br/>
